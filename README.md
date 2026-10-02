@@ -97,7 +97,7 @@ The suite needs an application key: create `.env` and run `php artisan key:gener
 (or set `APP_KEY` in the environment).
 
 Latest local run (SQLite, inside the project's Docker image): **419 tests, 1,229 assertions,
-all passing**; line coverage 87.7% (methods 78.2%).
+all passing**.
 
 ## API overview
 
