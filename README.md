@@ -5,7 +5,12 @@ operating cycle: authentication, establishments (tenants), catalog, recipe-based
 cash register, orders, payments, kitchen/receipt printing, two-level authorizations, reports
 and audit log.
 
-The web client lives in a separate repository: **technologies-pos-frontend**.
+The web client lives in a separate repository:
+[**technologies-pos-frontend**](https://github.com/HH27NT/technologies-pos-frontend).
+
+![Admin dashboard served by this API](docs/screenshots/dashboard.png)
+
+<sub>Web client running against this API with fictional demo data.</sub>
 
 **Stack:** PHP 8.2 · Laravel 12 · PostgreSQL 16 · Sanctum (API tokens) ·
 spatie/laravel-permission · DomPDF · Laravel Excel · PHPUnit 11 · Docker
