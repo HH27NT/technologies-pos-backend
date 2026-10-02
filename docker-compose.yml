@@ -1,0 +1,77 @@
+###############################################################################
+# Orquestación del backend (API) del SaaS POS — stack AUTOCONTENIDO.
+#
+#   db     -> PostgreSQL 16 (persistencia en volumen 'pgdata')
+#   app    -> Laravel servido con 'php artisan serve': migra + siembra al arrancar
+#   queue  -> Worker de colas (impresión, reportes, notificaciones)
+#
+# El código va HORNEADO en la imagen (no se monta el host), así que el contenedor
+# es reproducible y no arrastra el vendor/caché del entorno local. 'app' y 'queue'
+# comparten el volumen 'storage' (para exportaciones y logs).
+#
+# Arranque:  docker compose --env-file .env.docker up -d --build
+###############################################################################
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: pos_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-bar_pos_saas}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_FORWARD_PORT:-5433}:5432"   # host:container (5433 para no chocar con un Postgres local)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-bar_pos_saas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bar-pos-saas-api
+    container_name: pos_app
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      RUN_MIGRATIONS: "true"      # este contenedor corre migraciones y seeders
+      RUN_SEED: "true"
+      PHP_CLI_SERVER_WORKERS: "4" # requests concurrentes para 'artisan serve'
+    # --no-reload: evita que 'artisan serve' borre las variables de entorno del proceso
+    # que atiende las peticiones al detectar un .env presente (aquí vacío a propósito,
+    # ver entrypoint.sh); sin esta bandera, cada request pierde DB_CONNECTION/APP_DEBUG/etc.
+    # y Laravel cae a los defaults (sqlite, debug=false) -> 500 en cualquier endpoint con DB.
+    command: php artisan serve --host=0.0.0.0 --port=8000 --no-reload
+    volumes:
+      - storage:/var/www/html/storage
+    ports:
+      - "${APP_FORWARD_PORT:-8080}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  queue:
+    image: bar-pos-saas-api        # reutiliza la imagen construida por 'app'
+    container_name: pos_queue
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      RUN_MIGRATIONS: "false"      # no migra: solo procesa colas
+    command: php artisan queue:work --tries=3 --timeout=120 --queue=impresion,reportes,default
+    volumes:
+      - storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+volumes:
+  pgdata:
+  storage:

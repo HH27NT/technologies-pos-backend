@@ -1,0 +1,80 @@
+name: CI
+
+# Pipeline de integración continua sobre PostgreSQL (Convenciones §7.4 / §9.4):
+# migraciones reversibles, seeders, suite completa de pruebas y linter en verde.
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  tests:
+    name: Tests (PostgreSQL) + Pint
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bar_pos_testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: bar_pos_testing
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      # Clave del índice HMAC de PIN (M14.1). Valor exclusivo de CI: el código exige
+      # que esté configurada, y los pasos de migración/seed corren fuera de phpunit
+      # (que la define por su cuenta en phpunit.pgsql.xml).
+      POS_PIN_LOOKUP_KEY: base64:Q0ktc29sby1uby11c2FyLWVuLXByb2R1Y2Npb24tamFtYXM=
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_pgsql, pgsql, mbstring, bcmath, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache de dependencias Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Instalar dependencias
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Preparar entorno
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Verificar migraciones (up + reversa) contra PostgreSQL
+        run: |
+          php artisan migrate --force
+          php artisan migrate:rollback --force
+          php artisan migrate:fresh --seed --force
+
+      - name: Linter (Pint)
+        run: ./vendor/bin/pint --test
+
+      - name: Suite de pruebas sobre PostgreSQL
+        run: php artisan test -c phpunit.pgsql.xml
