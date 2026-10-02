@@ -140,12 +140,12 @@ tests/           Unit, Feature and Integration tests
 
 ## Authors
 
-- **Eduardo Palacios Quiroz** — [@LaloP1](https://github.com/LaloP1)
-- **Hector Hugo Naranjo**
+- **Eduardo Palacios Quiroz** — [@LaloP1](https://github.com/LaloP1) — lead developer
+- **Hector Hugo Naranjo** — security hardening (authorization-PIN key separated from `APP_KEY`, secrets removed from the repo), Docker startup fixes and full-stack features
 
 ## License
 
-[MIT](LICENSE) © 2026 Hector Hugo Naranjo and Eduardo Palacios Quiroz
+[MIT](LICENSE) © 2026 Eduardo Palacios Quiroz and Hector Hugo Naranjo
 
 ---
 
@@ -156,5 +156,5 @@ restaurantes: establecimientos, catálogo, inventario con recetas, caja, órdene
 impresión de comandas y tickets, autorizaciones con PIN, reportes exportables a PDF/Excel y
 auditoría. Se levanta con `docker compose --env-file .env.docker up -d --build` (después de
 copiar y completar `.env.docker.example`) y queda en `http://localhost:8080/api/v1`. Pruebas
-con `php artisan test`. Proyecto de Eduardo Palacios Quiroz (@LaloP1) y Hector Hugo Naranjo,
+con `php artisan test`. Proyecto liderado por Eduardo Palacios Quiroz (@LaloP1), con contribuciones de Hector Hugo Naranjo,
 con licencia MIT.
